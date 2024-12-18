@@ -8,9 +8,6 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
   exit();
 }
 
-$user_id = $_SESSION['user_id']; // Get the logged-in user's ID
-
-
 // Handling Add Book functionality
 if (isset($_POST['add_book'])) {
   $title = $_POST['title'];
@@ -186,8 +183,9 @@ $books = $pdo->query("SELECT * FROM books")->fetchAll(PDO::FETCH_ASSOC);
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Admin Panel - Manage Books</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 
@@ -272,45 +270,70 @@ $books = $pdo->query("SELECT * FROM books")->fetchAll(PDO::FETCH_ASSOC);
     .alert {
       border-radius: 8px;
     }
+
+    .navbar .dropdown-menu {
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+.navbar .dropdown-item {
+  padding: 10px 20px;
+}
+
+
   </style>
 </head>
 
 <body>
-  <!-- Navbar -->
-  <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-    <div class="container-fluid">
-      <a class="navbar-brand" href="#">Admin Panel</a>
-      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-        <span class="navbar-toggler-icon"></span>
-      </button>
-      <div class="collapse navbar-collapse" id="navbarNav">
-        <ul class="navbar-nav">
-          <li class="nav-item">
-            <a class="nav-link active" href="#addBook">Manage Books</a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link" href="#addCategory">Manage Categories</a>
-          </li>
-        </ul>
-      </div>
+
+ <!-- Navbar -->
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+  <div class="container-fluid">
+    <a class="navbar-brand" href="#">Admin Panel</a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarNav">
+      <ul class="navbar-nav me-auto">
+        <li class="nav-item">
+          <a class="nav-link active" href="#addBook">Manage Books</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="#addCategory">Manage Categories</a>
+        </li>
+      </ul>
+      <ul class="navbar-nav">
+        <!-- Profile Dropdown -->
+        <li class="nav-item dropdown">
+          <a class="nav-link" href="#" id="profileDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+            <img src="https://via.placeholder.com/45" alt="Profile" class="rounded-circle me-2" style="width: 45px; height: 45px;">
+          </a>
+          <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="profileDropdown">
+            <li><a class="dropdown-item" href="profile.php">Profile Settings</a></li>
+            <li><a class="dropdown-item" href="#" id="logoutButton">Logout</a></li>
+          </ul>
+        </li>
+      </ul>
     </div>
-  </nav>
+  </div>
+</nav>
+
+
 
   <div class="container">
     <h2 class="mb-4 text-center">Admin Panel - Manage Books</h2>
 
     <?php if (isset($_SESSION['message'])): ?>
-   <script>
-      Swal.fire({
-         icon: 'success',
-         title: 'Success!',
-         text: '<?php echo $_SESSION['message']; ?>',
-         showConfirmButton: false,
-         timer: 1500 
-      });
-   </script>
-   <?php unset($_SESSION['message']); ?>
-<?php endif; ?>
+      <script>
+        Swal.fire({
+          icon: 'success',
+          title: 'Success!',
+          text: '<?php echo $_SESSION['message']; ?>',
+          showConfirmButton: false,
+          timer: 1500
+        });
+      </script>
+      <?php unset($_SESSION['message']); ?>
+    <?php endif; ?>
 
 
     <!-- Add Book Form -->
@@ -349,9 +372,9 @@ $books = $pdo->query("SELECT * FROM books")->fetchAll(PDO::FETCH_ASSOC);
           <label for="image" class="form-label">Book Image</label>
           <input type="file" class="form-control" id="image" name="image" accept="image/*">
         </div>
-        <form id="addBookForm"  method="POST">
-   <button type="submit" name="add_book" class="btn btn-primary">Add Book</button>
-</form>
+        <form id="addBookForm" method="POST">
+          <button type="submit" name="add_book" class="btn btn-primary">Add Book</button>
+        </form>
       </form>
     </section>
 
@@ -383,7 +406,7 @@ $books = $pdo->query("SELECT * FROM books")->fetchAll(PDO::FETCH_ASSOC);
               </h5>
               <p class="card-text"> <?= htmlspecialchars($category['description']) ?> </p>
               <div class="text-center">
-              <a href="#" class="btn btn-danger delete-category" data-id="<?= $category['category_id'] ?>">Delete</a>
+                <a href="#" class="btn btn-danger delete-category" data-id="<?= $category['category_id'] ?>">Delete</a>
               </div>
             </div>
           </div>
@@ -475,122 +498,141 @@ $books = $pdo->query("SELECT * FROM books")->fetchAll(PDO::FETCH_ASSOC);
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
 
+
   <?php if (isset($_SESSION['success_message'])): ?>
-  <script>
-    document.addEventListener('DOMContentLoaded', function () {
-      Swal.fire({
-        icon: 'success',
-        title: 'Success',
-        text: '<?= $_SESSION['success_message'] ?>',
-        confirmButtonText: 'OK'
+    <script>
+      document.addEventListener('DOMContentLoaded', function() {
+        Swal.fire({
+          icon: 'success',
+          title: 'Success',
+          text: '<?= $_SESSION['success_message'] ?>',
+          confirmButtonText: 'OK'
+        });
       });
-    });
-  </script>
-  <?php unset($_SESSION['success_message']); ?>
-<?php endif; ?>
+    </script>
+    <?php unset($_SESSION['success_message']); ?>
+  <?php endif; ?>
 
-<?php if (isset($_SESSION['error_message'])): ?>
-  <script>
-    document.addEventListener('DOMContentLoaded', function () {
-      Swal.fire({
-        icon: 'error',
-        title: 'Error',
-        text: '<?= $_SESSION['error_message'] ?>',
-        confirmButtonText: 'OK'
+  <?php if (isset($_SESSION['error_message'])): ?>
+    <script>
+      document.addEventListener('DOMContentLoaded', function() {
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: '<?= $_SESSION['error_message'] ?>',
+          confirmButtonText: 'OK'
+        });
       });
-    });
-  </script>
-  <?php unset($_SESSION['error_message']); ?>
-<?php endif; ?>
+    </script>
+    <?php unset($_SESSION['error_message']); ?>
+  <?php endif; ?>
 
 
-<script>
-   document.getElementById('addBookForm').addEventListener('submit', function(e) {
+  <script>
+    document.getElementById('addBookForm').addEventListener('submit', function(e) {
       e.preventDefault(); // Prevent form from submitting immediately
 
       // Show SweetAlert confirmation
       Swal.fire({
-         title: 'Are you sure?',
-         text: "Do you want to add this book?",
-         icon: 'warning',
-         showCancelButton: true,
-         confirmButtonText: 'Yes, Add it!',
-         cancelButtonText: 'Cancel',
+        title: 'Are you sure?',
+        text: "Do you want to add this book?",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Yes, Add it!',
+        cancelButtonText: 'Cancel',
       }).then((result) => {
-         if (result.isConfirmed) {
-            // If confirmed, submit the form
-            document.getElementById('addBookForm').submit();
-         }
+        if (result.isConfirmed) {
+          // If confirmed, submit the form
+          document.getElementById('addBookForm').submit();
+        }
       });
-   });
-</script>
+    });
+  </script>
 
-<script>
-    document.querySelector("form[method='POST'][name='update_book']").addEventListener('submit', function (e) {
+  <script>
+    document.querySelector("form[method='POST'][name='update_book']").addEventListener('submit', function(e) {
+      e.preventDefault();
+
+      Swal.fire({
+        title: 'Update Book?',
+        text: "Are you sure you want to save changes to this book?",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#3085d6',
+        cancelButtonColor: '#d33',
+        confirmButtonText: 'Yes, Update it!'
+      }).then((result) => {
+        if (result.isConfirmed) {
+          this.submit();
+        }
+      });
+    });
+  </script>
+
+  <script>
+    document.querySelectorAll('.delete-book').forEach(button => {
+      button.addEventListener('click', function(e) {
         e.preventDefault();
 
+        const bookId = this.getAttribute('data-id');
+
         Swal.fire({
-            title: 'Update Book?',
-            text: "Are you sure you want to save changes to this book?",
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#3085d6',
-            cancelButtonColor: '#d33',
-            confirmButtonText: 'Yes, Update it!'
+          title: 'Delete Book?',
+          text: "Are you sure you want to delete this book? This action cannot be undone.",
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonColor: '#d33',
+          cancelButtonColor: '#3085d6',
+          confirmButtonText: 'Yes, Delete it!'
         }).then((result) => {
-            if (result.isConfirmed) {
-                this.submit();
-            }
+          if (result.isConfirmed) {
+            window.location.href = `admin-dashboard.php?delete_book=${bookId}`;
+          }
         });
-    });
-</script>
-
-<script>
-    document.querySelectorAll('.delete-book').forEach(button => {
-        button.addEventListener('click', function (e) {
-            e.preventDefault();
-
-            const bookId = this.getAttribute('data-id');
-
-            Swal.fire({
-                title: 'Delete Book?',
-                text: "Are you sure you want to delete this book? This action cannot be undone.",
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#d33',
-                cancelButtonColor: '#3085d6',
-                confirmButtonText: 'Yes, Delete it!'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    window.location.href = `admin-dashboard.php?delete_book=${bookId}`;
-                }
-            });
-        });
+      });
     });
 
     document.querySelectorAll('.delete-category').forEach(button => {
-        button.addEventListener('click', function (e) {
-            e.preventDefault();
+      button.addEventListener('click', function(e) {
+        e.preventDefault();
 
-            const categoryId = this.getAttribute('data-id');
+        const categoryId = this.getAttribute('data-id');
 
-            Swal.fire({
-                title: 'Delete Category?',
-                text: "Are you sure you want to delete this category? This action cannot be undone.",
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#d33',
-                cancelButtonColor: '#3085d6',
-                confirmButtonText: 'Yes, Delete it!'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    window.location.href = `admin-dashboard.php?delete_category=${categoryId}`;
-                }
-            });
+        Swal.fire({
+          title: 'Delete Category?',
+          text: "Are you sure you want to delete this category? This action cannot be undone.",
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonColor: '#d33',
+          cancelButtonColor: '#3085d6',
+          confirmButtonText: 'Yes, Delete it!'
+        }).then((result) => {
+          if (result.isConfirmed) {
+            window.location.href = `admin-dashboard.php?delete_category=${categoryId}`;
+          }
         });
+      });
     });
-</script>
+  </script>
 
+  <script>
+    function confirmLogout() {
+      // Display SweetAlert confirmation
+      Swal.fire({
+        title: 'Are you sure?',
+        text: "Do you really want to log out?",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Yes, logout',
+        cancelButtonText: 'Cancel',
+        reverseButtons: true
+      }).then((result) => {
+        if (result.isConfirmed) {
+          window.location.href = 'logout.php';
+        }
+      });
+    }
+  </script>
 
 
 </body>
