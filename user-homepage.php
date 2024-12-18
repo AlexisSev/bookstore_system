@@ -57,13 +57,17 @@ function getCartItems($pdo, $user_id)
   try {
     // Query to fetch cart items along with book details
     $stmt = $pdo->prepare("
-          SELECT b.title, b.price, b.image, c.quantity
-          FROM cart c
-          JOIN books b ON c.book_id = b.book_id
-          WHERE c.user_id = :user_id
-      ");
+            SELECT b.title, b.price, b.image, c.quantity
+            FROM cart c
+            JOIN books b ON c.book_id = b.book_id
+            WHERE c.user_id = :user_id
+        ");
     $stmt->execute(['user_id' => $user_id]);
-    return $stmt->fetchAll(PDO::FETCH_ASSOC); // Return all items as an associative array
+
+    // Check if any rows are returned
+    $cartItems = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    return $cartItems; // Return all items as an associative array
   } catch (PDOException $e) {
     // Handle errors
     echo "Error fetching cart items: " . $e->getMessage();
@@ -88,21 +92,105 @@ $searchQuery = $_GET['search_query'] ?? ''; // Fetch search query
 $books = []; // Initialize empty array for books
 
 try {
-    if (!empty($searchQuery)) {
-        // Search for books by title, author, or description
-        $stmt = $pdo->prepare("SELECT * FROM books WHERE title LIKE :query OR author LIKE :query OR description LIKE :query");
-        $stmt->execute(['query' => '%' . $searchQuery . '%']);
-    } else {
-        // Fetch all books if no search query is provided
-        $stmt = $pdo->prepare("SELECT * FROM books");
-        $stmt->execute();
-    }
-    $books = $stmt->fetchAll(PDO::FETCH_ASSOC); // Fetch all matching books
+  if (!empty($searchQuery)) {
+    // Search for books by title, author, or description
+    $stmt = $pdo->prepare("SELECT * FROM books WHERE title LIKE :query OR author LIKE :query OR description LIKE :query");
+    $stmt->execute(['query' => '%' . $searchQuery . '%']);
+  } else {
+    // Fetch all books if no search query is provided
+    $stmt = $pdo->prepare("SELECT * FROM books");
+    $stmt->execute();
+  }
+  $books = $stmt->fetchAll(PDO::FETCH_ASSOC); // Fetch all matching books
 } catch (PDOException $e) {
-    die("Error fetching books: " . $e->getMessage());
+  die("Error fetching books: " . $e->getMessage());
 }
 
 
+if (isset($_POST['checkout'])) {
+  // Fetch the cart items from the database for the logged-in user
+  $stmt = $pdo->prepare("SELECT c.book_id, c.quantity, b.title, b.stock, b.price
+                         FROM cart c
+                         JOIN books b ON c.book_id = b.book_id
+                         WHERE c.user_id = :user_id");
+  $stmt->execute(['user_id' => $user_id]);
+  $cartItems = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+  if (empty($cartItems)) {
+    // If the cart is empty, display a message
+    echo '<div class="alert alert-warning">Your cart is empty. Please add items to the cart before checking out.</div>';
+  } else {
+    // Start transaction
+    try {
+      $pdo->beginTransaction();
+
+      $totalAmount = 0;
+      $insufficientStockItems = []; // Array to store items with insufficient stock
+
+      // Process each item in the cart
+      foreach ($cartItems as $item) {
+        if ($item['stock'] >= $item['quantity']) {
+          // If stock is sufficient, deduct the stock
+          $newStock = $item['stock'] - $item['quantity'];
+          $updateBookStmt = $pdo->prepare("UPDATE books SET stock = :stock WHERE book_id = :book_id");
+          $updateBookStmt->execute(['stock' => $newStock, 'book_id' => $item['book_id']]);
+
+          // Add to total amount
+          $totalAmount += $item['price'] * $item['quantity'];
+        } else {
+          // If stock is not enough, add the item to the insufficient stock list
+          $insufficientStockItems[] = $item['title'];
+        }
+      }
+
+      // Redirect to a confirmation page
+      header('Location: order-confirmation.php');
+      exit;
+    } catch (PDOException $e) {
+      // If there was an error during the transaction, roll back
+      $pdo->rollBack();
+      echo '<div class="alert alert-danger">Error processing your checkout. Please try again later.</div>';
+    }
+  }
+}
+
+if (isset($_POST['send_message'])) {
+  // Get user data and message content
+  $user_id = $_SESSION['user_id']; // Assuming session contains the logged-in user's ID
+  $subject = $_POST['subject'];
+  $content = $_POST['content'];
+
+  // Prepare and insert message into database
+  $stmt = $pdo->prepare("INSERT INTO messages (user_id, subject, content, date_sent) VALUES (?, ?, ?, NOW())");
+  $stmt->execute([$user_id, $subject, $content]);
+
+  // Check if the message was successfully sent and trigger SweetAlert
+  if ($stmt->rowCount() > 0) {
+    echo "<script>
+            document.addEventListener('DOMContentLoaded', () => {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Message Sent',
+                    text: 'Your message has been successfully sent to the admin.',
+                    showConfirmButton: false,
+                    timer: 2000
+                });
+            });
+          </script>";
+} else {
+    echo "<script>
+            document.addEventListener('DOMContentLoaded', () => {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Message Failed',
+                    text: 'There was an error sending your message. Please try again.',
+                    showConfirmButton: false,
+                    timer: 2000
+                });
+            });
+          </script>";
+}
+}
 
 ?>
 
@@ -115,155 +203,261 @@ try {
   <title>Books and Cart</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
   <style>
+    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
+
     body {
-      background: #f4f7fa;
-      font-family: 'Arial', sans-serif;
+      background: #f9f9f9;
+      font-family: 'Poppins', sans-serif;
+      margin: 0;
       color: #333;
     }
 
-    .container {
-      margin-top: 50px;
-    }
-
-    .card-img-top {
-      height: 300px;
-      object-fit: cover;
-    }
-
-    .btn-primary {
-      background-color: #3498db;
-      border-color: #3498db;
-    }
-
-    .btn-primary:hover {
-      background-color: #2980b9;
-      border-color: #2980b9;
-    }
-
-    .cart-summary {
-      background-color: #fff;
-      padding: 20px;
-      border-radius: 8px;
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-      margin-top: 30px;
-    }
 
     .navbar-custom {
-      background-color: #3498db;
+      background: linear-gradient(to right, #007bff, #0056b3);
+      padding: 1rem 2rem;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .navbar-custom .navbar-brand {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #fff;
+      text-transform: uppercase;
+    }
+
+    .navbar-custom .nav-link {
+      font-size: 1rem;
+      font-weight: 500;
+      color: #fff;
+      margin: 0 0.5rem;
+      transition: color 0.3s;
+    }
+
+    .navbar-custom .nav-link:hover,
+    .navbar-custom .nav-link.active {
+      color: #ffc107;
+    }
+
+    .nav-item {
+      margin-top: 1rem;
+    }
+
+    .container h5 {
+      font-size: 1.5em;
     }
 
     .hero-section {
-      background: #2980b9;
-      /* Hero section background color */
+      background: linear-gradient(to right, #0056b3, #007bff), url('images/hero-bg.jpg') center/cover no-repeat;
       color: white;
-      padding: 100px 0;
+      padding: 120px 20px;
+      text-align: center;
+      box-shadow: inset 0 0 50px rgba(0, 0, 0, 0.2);
     }
 
-    .hero-title {
-      font-size: 3.5rem;
-      font-weight: bold;
-      margin-bottom: 20px;
+    .hero-section h1 {
+      font-size: 3rem;
+      font-weight: 700;
+      margin-bottom: 1rem;
     }
 
-    .hero-description {
+    .hero-section p {
       font-size: 1.25rem;
-      margin-bottom: 30px;
+      font-weight: 400;
+      margin-bottom: 2rem;
     }
 
     .hero-btn {
-      background-color: #f39c12;
-      border-color: #f39c12;
-      padding: 12px 30px;
-      font-size: 1.1rem;
-      border-radius: 5px;
-    }
-
-    .hero-btn:hover {
-      background-color: #e67e22;
-      border-color: #e67e22;
-      text-decoration: none;
-    }
-
-    .categories-section {
-      background-color: #f7f7f7;
-      /* Light background for categories */
-      padding: 60px 0;
-    }
-
-    .categories-title {
-      font-size: 2.5rem;
-      color: #2c3e50;
+      font-size: 1.2rem;
       font-weight: 600;
-    }
-
-    .category-card {
-      background-color: #fff;
-      padding: 30px;
-      border-radius: 10px;
-      text-align: center;
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      color: #fff;
+      background: linear-gradient(to right, #ffc107, #ff9800);
+      border: none;
+      padding: 0.8rem 2rem;
+      border-radius: 30px;
       transition: transform 0.3s ease, box-shadow 0.3s ease;
     }
 
-    .category-card:hover {
+    .hero-btn:hover {
+      transform: scale(1.1);
+      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+    }
+
+    .card {
+      border: none;
+      border-radius: 15px;
+      overflow: hidden;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .card:hover {
       transform: translateY(-10px);
-      box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+      box-shadow: 0 15px 25px rgba(0, 0, 0, 0.2);
     }
 
-    .category-card h4 {
+    .card-title {
+      font-weight: 600;
+      color: #0056b3;
+      font-size: 1.2rem;
+    }
+
+    .btn-primary {
+      background: linear-gradient(to right, #007bff, #0056b3);
+      border: none;
+      border-radius: 25px;
+      padding: 0.6rem 1.2rem;
+      font-weight: 600;
+      color: #ffffff;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .btn-primary:hover {
+      transform: scale(1.05);
+      box-shadow: 0 8px 15px rgba(0, 0, 0, 0.2);
+    }
+
+    .btn-outline-primary {
+      border: 2px solid #007bff;
+      color: #007bff;
+      border-radius: 25px;
+      padding: 0.6rem 1.2rem;
+      font-weight: 600;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .btn-outline-primary:hover {
+      background: #007bff;
+      color: #ffffff;
+      box-shadow: 0 8px 15px rgba(0, 0, 0, 0.2);
+    }
+
+    .btn-danger {
+      background: #e63946;
+      border: none;
+      border-radius: 25px;
+      padding: 0.6rem 1.2rem;
+      font-weight: 600;
+      color: #ffffff;
+    }
+
+    .btn-danger:hover {
+      background: #d62828;
+    }
+
+    .cart-summary {
+      padding: 20px;
+      background: #ffffff;
+      border-radius: 15px;
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+      margin: 20px 100px;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+
+    .cart-summary h2 {
+      font-weight: 700;
+      color: #0056b3;
+      margin-bottom: 1rem;
+    }
+
+    .cart-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-bottom: 1px solid #e9ecef;
+    }
+
+    .cart-items {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+    }
+
+    .cart-item {
+      flex: 1 1 calc(30% - 20px);
+      max-width: calc(30% - 20px);
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+      padding: 15px;
+      border-radius: 10px;
+      background: #f8f9fa;
+    }
+
+    .cart-item img {
+      max-width: 100%;
+      height: auto;
+      display: block;
+      margin: 0 auto;
+      border-radius: 10px;
+    }
+
+    .cart-total {
       font-size: 1.5rem;
-      margin-bottom: 15px;
+      font-weight: 700;
+      color: #28a745;
+      text-align: right;
+      margin-top: 1rem;
     }
 
-    .category-card p {
-      font-size: 1rem;
-      margin-bottom: 20px;
+    .btn-success {
+      background: linear-gradient(to right, #28a745, #218838);
+      border: none;
+      color: #fff;
+      padding: 0.6rem 1.5rem;
+      font-size: 1.1rem;
+      border-radius: 25px;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
     }
 
-    .category-card .btn-outline-primary {
-      font-size: 1rem;
-      padding: 8px 20px;
-      border-radius: 5px;
-    }
-
-    .category-card .btn-outline-primary:hover {
-      background-color: #2980b9;
-      color: white;
-      border-color: #2980b9;
+    .btn-success:hover {
+      transform: scale(1.05);
+      box-shadow: 0 8px 15px rgba(0, 0, 0, 0.2);
     }
 
     .cart-counter {
-      background-color: red;
+      background: red;
       color: white;
-      padding: 5px 10px;
       border-radius: 50%;
+      padding: 0.3rem 0.6rem;
+      font-size: 0.9rem;
       font-weight: bold;
-      font-size: 1rem;
-      position: relative;
-      top: -5px;
-      left: 5px;
     }
 
+    .card-body {
+      font-family: 'Poppins', sans-serif;
+      background: #ffffff;
+      border-radius: 10px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+      padding: 20px;
+      transition: transform 0.3s, box-shadow 0.3s;
+    }
 
-    @media (max-width: 767px) {
-      .hero-title {
-        font-size: 2.5rem;
+    .card-body:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+    }
+
+    @media (max-width: 768px) {
+      .cart-item {
+        flex: 1 1 100%;
+        max-width: 100%;
       }
 
-      .hero-description {
-        font-size: 1.1rem;
-      }
-
-      .category-card {
-        padding: 20px;
-      }
-
-      .categories-title {
+      .hero-section h1 {
         font-size: 2rem;
+      }
+
+      .hero-section p {
+        font-size: 1rem;
       }
     }
   </style>
+
+
 </head>
 
 <body>
@@ -277,10 +471,10 @@ try {
       </button>
       <div class="collapse navbar-collapse" id="navbarNav">
         <ul class="navbar-nav ms-auto">
-        <form class="d-flex me-2" method="GET" action="">
-  <input class="form-control me-2" type="search" name="search_query" placeholder="Search books" aria-label="Search" value="<?= htmlspecialchars($_GET['search_query'] ?? '') ?>">
-  <button class="btn btn-outline-light" type="submit">Search</button>
-</form>
+          <form class="d-flex me-2 h-50" method="GET" action="">
+            <input class="form-control me-2" type="search" name="search_query" placeholder="Search books" aria-label="Search" value="<?= htmlspecialchars($_GET['search_query'] ?? '') ?>">
+            <button class="btn btn-outline-light" type="submit">Search</button>
+          </form>
 
           <li class="nav-item">
             <a class="nav-link" href="?show_home=true">Home</a>
@@ -299,10 +493,17 @@ try {
                 alt="Profile" class="rounded-circle me-2" style="width: 35px; height: 35px; object-fit: cover;">
             </a>
             <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
+
               <li><a class="dropdown-item" href="profile.php">Profile</a></li>
+             
+              <li>
+                <button class="dropdown-item" data-bs-toggle="modal" data-bs-target="#contactModal">Contact Admin</button>
+              </li>
+              
               <li><a class="dropdown-item" href="#" onclick="confirmLogout()">Logout</a></li>
             </ul>
           </li>
+
         </ul>
       </div>
     </div>
@@ -319,28 +520,59 @@ try {
     </div>
   <?php endif; ?>
 
+ 
+ <!-- Modal for Contacting Admin -->
+<div class="modal fade" id="contactModal" tabindex="-1" aria-labelledby="contactModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="contactModalLabel">Contact Admin</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form method="POST" action="">
+          <div class="mb-3">
+            <label for="subject" class="form-label">Subject</label>
+            <input type="text" class="form-control" id="subject" name="subject" required>
+          </div>
+          <div class="mb-3">
+            <label for="content" class="form-label">Message</label>
+            <textarea class="form-control" id="content" name="content" rows="4" required></textarea>
+          </div>
+          <button type="submit" class="btn btn-primary" name="send_message">Send Message</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
   <!-- Books Section -->
   <?php if ($show_books): ?>
-    <div class="container">
+    <div class="container mt-4">
       <div class="row">
         <?php foreach ($books as $book) { ?>
           <div class="col-md-4 mb-4">
             <div class="card shadow-sm border-light">
               <img src="./images/books/<?= $book['image'] ?>" class="card-img-top" style="object-fit: fill;" alt="Book Image">
-              <div class="card-body">
-                <h5 class="card-title"><?= htmlspecialchars($book['title']) ?></h5>
-                <p class="card-text">Author: <?= htmlspecialchars($book['author']) ?></p>
-                <p class="card-text">Price: ₱<?= htmlspecialchars($book['price']) ?></p>
-                <p class="card-text">Stock: <?= htmlspecialchars($book['stock']) ?></p>
-                <form method="post" class="mb-2">
-                  <input type="hidden" name="book_id" value="<?= $book['book_id'] ?>">
-                  <button type="submit" name="add_to_cart" class="btn btn-primary w-100">Add to Cart</button>
-                </form>
-                <button type="button" class="btn btn-outline-secondary w-100" data-bs-toggle="modal" data-bs-target="#bookModal<?= $book['book_id'] ?>">
+              <div class="card-body text-center p-4">
+                <h5 class="card-title text-primary fw-bold mb-3"><?= htmlspecialchars($book['title']) ?></h5>
+                <p class="card-text text-secondary"><span class="fw-semibold"><?= htmlspecialchars($book['author']) ?></span></p>
+                <p class="card-text text-success fw-bold">₱<?= htmlspecialchars(number_format($book['price'], 2)) ?></p>
+                <p class="card-text <?= $book['stock'] > 0 ? 'text-success' : 'text-danger' ?>">
+                  Stock: <?= htmlspecialchars($book['stock']) ?>
+                </p>
+                <?php if ($book['stock'] > 0): ?>
+                  <form method="post" class="mb-2">
+                    <input type="hidden" name="book_id" value="<?= $book['book_id'] ?>">
+                    <button type="submit" name="add_to_cart" class="btn btn-primary w-100">Add to Cart</button>
+                  </form>
+                <?php else: ?>
+                  <button type="button" class="btn btn-danger w-100 out-of-stock-btn" disabled>Out of Stock</button>
+                <?php endif; ?>
+                <button type="button" class="btn btn-outline-primary w-100 mt-2" data-bs-toggle="modal" data-bs-target="#bookModal<?= $book['book_id'] ?>">
                   View Details
                 </button>
               </div>
-
             </div>
           </div>
         <?php } ?>
@@ -361,13 +593,23 @@ try {
             <img src="./images/books/<?= $book['image'] ?>" class="img-fluid mb-3" alt="Book Image">
             <p><strong>Author:</strong> <?= htmlspecialchars($book['author']) ?></p>
             <p><strong>Price:</strong> ₱<?= htmlspecialchars($book['price']) ?></p>
-            <p><strong>Stock:</strong> <?= htmlspecialchars($book['stock']) ?></p>
+            <p><strong>Stock:</strong>
+              <?php if ($book['stock'] > 0): ?>
+                <span class="badge bg-success"><?= htmlspecialchars($book['stock']) ?> Available</span>
+              <?php else: ?>
+                <span class="badge bg-danger">Out of Stock</span>
+              <?php endif; ?>
+            </p>
+
+            <!-- Description Information -->
             <p><strong>Description:</strong> <?= htmlspecialchars($book['description']) ?></p>
           </div>
+
           <div class="modal-footer">
             <form method="post">
               <input type="hidden" name="book_id" value="<?= $book['book_id'] ?>">
-              <button type="submit" name="add_to_cart" class="btn btn-primary">Add to Cart</button>
+              <!-- Disable the button if stock is zero -->
+              <button type="submit" name="add_to_cart" class="btn btn-primary" <?= $book['stock'] == 0 ? 'disabled' : '' ?>>Add to Cart</button>
             </form>
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
           </div>
@@ -375,6 +617,7 @@ try {
       </div>
     </div>
   <?php } ?>
+
 
 
   <?php if ($show_cart): ?>
@@ -401,8 +644,8 @@ try {
                 class="cart-item-image rounded me-4" style="width: 80px; height: 120px; object-fit: cover;">
               <div>
                 <h5 class="mb-2"><?= htmlspecialchars($item['title']) ?></h5>
-                <p class="mb-1 text-secondary">Price: $<?= htmlspecialchars(number_format($item['price'], 2)) ?> x <?= htmlspecialchars($item['quantity']) ?></p>
-                <p class="mb-0 text-success fw-bold">Total: $<?= htmlspecialchars(number_format($itemTotalPrice, 2)) ?></p>
+                <p class="mb-1 text-secondary">Price: ₱<?= htmlspecialchars(number_format($item['price'], 2)) ?> x <?= htmlspecialchars($item['quantity']) ?></p>
+                <p class="mb-0 text-success fw-bold">Total: ₱<?= htmlspecialchars(number_format($itemTotalPrice, 2)) ?></p>
               </div>
             </div>
           </div>
@@ -437,7 +680,11 @@ try {
                 <p class="card-text">Stock: <?= htmlspecialchars($book['stock']) ?></p>
                 <form method="post" class="mb-2">
                   <input type="hidden" name="book_id" value="<?= $book['book_id'] ?>">
-                  <button type="submit" name="add_to_cart" class="btn btn-primary w-100">Add to Cart</button>
+                  <?php if ($book['stock'] > 0): ?>
+                    <button type="submit" name="add_to_cart" class="btn btn-primary w-100">Add to Cart</button>
+                  <?php else: ?>
+                    <button type="button" class="btn btn-primary w-100" disabled>Out of Stock</button>
+                  <?php endif; ?>
                 </form>
                 <button type="button" class="btn btn-outline-secondary w-100" data-bs-toggle="modal" data-bs-target="#bookModal<?= $book['book_id'] ?>">
                   View Details
@@ -450,9 +697,6 @@ try {
     <?php endif; ?>
   </div>
 <?php endif; ?>
-
-
-
 
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
@@ -471,6 +715,22 @@ try {
     <?php unset($_SESSION['cart_success']); ?>
   <?php endif; ?>
 
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // Attach click event to all Out of Stock buttons
+      const outOfStockButtons = document.querySelectorAll('.out-of-stock-btn');
+      outOfStockButtons.forEach(button => {
+        button.addEventListener('click', () => {
+          Swal.fire({
+            icon: 'error',
+            title: 'Out of Stock',
+            text: 'This book is currently unavailable.',
+            confirmButtonColor: '#d33',
+          });
+        });
+      });
+    });
+  </script>
 
 
   <script>
