@@ -2,6 +2,10 @@
 include_once('connection.php');
 session_start();
 
+// Initialize a flag to track success or failure
+$registration_success = false;
+$error_message = "";
+
 // Handle user registration
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['register'])) {
     $name = $_POST['name'];
@@ -17,9 +21,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['register'])) {
         $stmt->bindParam(':password', $password, PDO::PARAM_STR);
         $stmt->execute();
 
-        echo "<div class='alert alert-success'>Registration successful! You can now log in.</div>";
+        // Set success flag
+        $registration_success = true;
     } catch (PDOException $e) {
-        echo "<div class='alert alert-danger'>Error: " . $e->getMessage() . "</div>";
+        $error_message = $e->getMessage();
     }
 }
 
@@ -82,6 +87,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['login'])) {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Bookify SignUp & LogIn</title>
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 
 <style>
@@ -445,6 +451,26 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['login'])) {
   signInButton.addEventListener('click', () => {
     container.classList.remove("right-panel-active");
   });
+
+  
 </script>
+
+       <?php if ($registration_success): ?>
+            echo "<script>
+              document.addEventListener('DOMContentLoaded', function() {
+                Swal.fire({
+                  icon: 'success',
+                  title: 'Success!',
+                  text: 'User registered successfully.',
+                  confirmButtonText: 'OK'
+                }).then((result) => {
+                  if (result.isConfirmed) {
+                    window.location.href = 'signup.php';
+                  }
+                });
+              });
+            </script>";
+        <?php endif; ?>
+
 
 </html>

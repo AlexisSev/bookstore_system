@@ -30,6 +30,53 @@
     echo json_encode(['error' => $e->getMessage()]);
   }
 
+  // Fetch orders from the database
+  try {
+    $query = "SELECT * FROM orders ORDER BY order_date DESC";
+    $stmt = $pdo->prepare($query);
+    $stmt->execute();
+    $orders = $stmt->fetchAll(PDO::FETCH_ASSOC);
+  } catch (PDOException $e) {
+    echo "Error fetching orders: " . $e->getMessage();
+    exit;
+  }
+
+  $query = " SELECT 
+        orders.order_id, 
+        users.name AS customer_name, 
+        books.title AS book_title, 
+        orders.book_id, 
+        orders.quantity, 
+        orders.price, 
+        orders.order_date, 
+        orders.status
+    FROM orders
+    JOIN users ON orders.user_id = users.user_id
+    JOIN books ON orders.book_id = books.book_id
+";
+
+  try {
+    // Prepare and execute the query
+    $stmt = $pdo->prepare($query);
+    $stmt->execute();
+
+    // Fetch all orders
+    $orders = $stmt->fetchAll(PDO::FETCH_ASSOC);
+  } catch (PDOException $e) {
+    echo 'Query failed: ' . $e->getMessage();
+  }
+
+  try {
+    // Prepare and execute the query
+    $stmt = $pdo->prepare($query);
+    $stmt->execute();
+
+    // Fetch all orders
+    $orders = $stmt->fetchAll(PDO::FETCH_ASSOC);
+  } catch (PDOException $e) {
+    echo 'Query failed: ' . $e->getMessage();
+  }
+
   // Handling Add Book functionality
   if (isset($_POST['add_book'])) {
     $title = $_POST['title'];
@@ -186,7 +233,14 @@
     $stmt->execute(['book_id' => $book_id]);
     $book = $stmt->fetch(PDO::FETCH_ASSOC);
     ?>
-  <?php endif; ?>
+
+
+
+  <?php endif;
+
+
+
+  ?>
 
 
 
@@ -264,13 +318,17 @@
         /* Adjust margin for expanded sidebar */
       }
 
-        #Allbooks{
-          margin-left: 70px;
-        }
+      #Allbooks {
+        margin-left: 70px;
+      }
 
       #viewBooksContent {
         display: block;
         /* Initially show this if it’s the default section */
+      }
+
+      #viewOrders {
+        padding-right: 1.5rem;
       }
 
       .main-content {
@@ -394,187 +452,6 @@
         border-radius: 5px;
         transition: background-color 0.3s;
       }
-
-      .btn:hover {
-        background-color: #1b4d32;
-        /* Darker green on hover */
-      }
-
-      /* Enhancing table headers */
-      .report-table th {
-        background-color: #2d6a4f;
-        color: white;
-        font-weight: 600;
-        padding: 10px;
-      }
-
-      .report-table td {
-        padding: 10px;
-      }
-
-      .badge {
-        position: absolute;
-        top: 5px;
-        right: 10px;
-        background-color: #ff5722;
-        /* A bright color for better visibility */
-        color: white;
-        font-size: 0.75rem;
-        font-weight: bold;
-        padding: 5px 8px;
-        border-radius: 50%;
-        display: inline-block;
-        min-width: 20px;
-        text-align: center;
-      }
-
-      .badge-warning {
-        background-color: #ffc107;
-        /* Yellow color for Collection Status */
-      }
-
-      .badge-danger {
-        background-color: #dc3545;
-        /* Red color for Reports & Feedbacks */
-      }
-
-      .profile-image {
-        width: 100px;
-        /* Fixed width */
-        height: 100px;
-        /* Fixed height */
-        object-fit: cover;
-        /* Ensures the image fits within the circle */
-        border-radius: 50%;
-        /* Make the image circular */
-      }
-
-      .no-image {
-        width: 100px;
-        /* Fixed width */
-        height: 100px;
-        /* Fixed height */
-        border-radius: 50%;
-        /* Circular placeholder */
-        font-size: 1.2rem;
-        color: #aaa;
-      }
-
-      .collector-box-container-parent {
-        overflow-x: hidden;
-      }
-
-      .admin-box-container-parent {
-        overflow-x: hidden;
-      }
-
-      .collector-box {
-        position: relative;
-        background: #ffffff;
-        border: 1px solid #eaeaea;
-        border-radius: 10px;
-        overflow: hidden;
-        transition: transform 0.3s ease, box-shadow 0.3s ease;
-      }
-
-      .collector-box:hover {
-        transform: translateY(-5px);
-        box-shadow: 0px 8px 15px rgba(0, 0, 0, 0.1);
-      }
-
-      .status-label-top-left {
-        font-size: 0.85rem;
-        font-weight: 600;
-      }
-
-      .collector-image img {
-        border: 3px solid #2d6a4f;
-        background: #ffffff;
-      }
-
-
-      .card-body {
-        padding: 15px;
-      }
-
-      .card-body-sched {
-        padding: 15px;
-        width: 100%;
-        min-width: 1250px;
-      }
-
-      .card-title {
-        font-size: 1.2rem;
-      }
-
-      .btn {
-        font-size: 0.9rem;
-        font-weight: 600;
-        border-radius: 5px;
-        transition: background-color 0.3s ease, color 0.3s ease;
-      }
-
-      .btn-success {
-        background-color: #28a745;
-        border: 0;
-      }
-
-      .btn-success:hover {
-        background-color: #218838;
-      }
-
-      .btn-warning {
-        background-color: #ffc107;
-        border: 0;
-        color: #000;
-      }
-
-      .btn-warning:hover {
-        background-color: #e0a800;
-      }
-
-      .custom-form {
-        max-width: 600px;
-        margin: 0 auto;
-        background-color: #f8f9fa;
-        padding: 25px;
-        border-radius: 8px;
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-      }
-
-      .custom-form-content {
-        padding: 15px;
-      }
-
-      .form-group {
-        margin-bottom: 1.5rem;
-      }
-
-      .form-label {
-        font-weight: bold;
-      }
-
-      .btn {
-        font-size: 16px;
-        padding: 12px;
-        margin-top: 20px;
-      }
-
-      .text-primary {
-        color: #007bff !important;
-      }
-
-      /* Custom Button Hover Effect */
-      .btn:hover {
-        background-color: #0056b3;
-        border-color: #0056b3;
-      }
-
-      /* Custom Field Focus Effect */
-      .form-control:focus {
-        border-color: #007bff;
-        box-shadow: 0 0 0 0.2rem rgba(38, 143, 255, 0.5);
-      }
     </style>
 
   </head>
@@ -583,17 +460,17 @@
 
     <div class="wrapper">
       <aside id="sidebar" class="sidebar">
-      <div class="d-flex align-items-center">
-  <!-- Sidebar Toggle Button -->
-  <button class="toggle-btn" type="button" aria-label="Toggle Sidebar">
-    <img src="./images/Bookify System Logo.webp" alt="Book Icon" width="24" height="24">
-  </button>
+        <div class="d-flex align-items-center">
+          <!-- Sidebar Toggle Button -->
+          <button class="toggle-btn" type="button" aria-label="Toggle Sidebar">
+            <img src="./images/Bookify System Logo.webp" alt="Book Icon" width="24" height="24">
+          </button>
 
-  <!-- Sidebar Logo, Clicking on this will Show the View Books Section -->
-  <div class="sidebar-logo ms-3">
-    <a href="javascript:void(0);" onclick="showViewBooks()" class="fs-4 fw-bold text-decoration-none text-dark">BOOKIFY SYSTEM</a>
-  </div>
-</div>
+          <!-- Sidebar Logo, Clicking on this will Show the View Books Section -->
+          <div class="sidebar-logo ms-3">
+            <a href="javascript:void(0);" onclick="showViewBooks()" class="fs-4 fw-bold text-decoration-none text-light">BOOKIFY SYSTEM</a>
+          </div>
+        </div>
 
         <ul class="sidebar-nav">
 
@@ -691,6 +568,15 @@
             </a>
           </li>
 
+          <!-- Manage Orders -->
+          <li class="sidebar-item">
+            <a href="#" onclick="showContent('viewOrders', this)" class="sidebar-link">
+              <i class="fas fa-shopping-cart"></i> <!-- Orders Icon -->
+              <span>Manage Orders</span>
+            </a>
+          </li>
+
+
         </ul>
 
 
@@ -728,7 +614,7 @@
                     <td><?= htmlspecialchars($book['book_id']); ?></td>
                     <td><?= htmlspecialchars($book['title']); ?></td>
                     <td><?= htmlspecialchars($book['author']); ?></td>
-                    <td><?= htmlspecialchars($book['price']); ?></td>
+                    <td>₱<?= htmlspecialchars($book['price']); ?></td>
                     <td><?= htmlspecialchars($book['stock']); ?></td>
                     <td><?= htmlspecialchars($book['category']); ?></td>
                     <td><?= htmlspecialchars($book['description']); ?></td>
@@ -753,30 +639,81 @@
             <?php foreach ($books as $book): ?>
               <div class="col">
                 <div class="card">
-                  <img src="./images/books/<?= htmlspecialchars($book['image']); ?>" alt="<?= htmlspecialchars($book['title']); ?>" class="card-img-top" style="height: 250px; object-fit: cover;">
+                  <img src="./images/books/<?= htmlspecialchars($book['image']); ?>" alt="<?= htmlspecialchars($book['title']); ?>" class="card-img-top" style="height: 250px; object-fit: fill;">
                   <div class="card-body">
-                    <h5 class="card-title"><?= htmlspecialchars($book['title']); ?></h5>
+                    <h5 class="card-title text-center "><?= htmlspecialchars($book['title']); ?></h5>
                     <p class="card-text"><strong>Author:</strong> <?= htmlspecialchars($book['author']); ?></p>
                     <p class="card-text"><strong>Price:</strong> <?= htmlspecialchars($book['price']); ?></p>
                     <p class="card-text"><strong>Stock:</strong> <?= htmlspecialchars($book['stock']); ?></p>
                     <p class="card-text"><strong>Category:</strong> <?= htmlspecialchars($book['category']); ?></p>
                     <p class="card-text"><strong>Description:</strong> <?= htmlspecialchars($book['description']); ?></p>
                   </div>
-                  <div class="card-footer text-center">
-                    <a href="?edit_book=<?= $book['book_id']; ?>" class="btn btn-sm btn-primary">Edit</a>
-                    <a href="?delete_book=<?= $book['book_id']; ?>" class="btn btn-sm btn-danger">Delete</a>
-                  </div>
                 </div>
               </div>
             <?php endforeach; ?>
           </div>
         </div>
-
-
-
       </div>
-    </div>
 
+      <!-- Main Content for Manage Orders -->
+      <div id="viewOrders" class="content-section" style="display: none;">
+        <h2>Manage Orders</h2>
+        <div class="table-responsive" style="width: 100%; overflow-x: auto;">
+          <table id="ordersTable" class="table table-bordered table-striped" style="width: 100%; table-layout: fixed;">
+            <thead class="table-dark">
+              <tr>
+                <th>Order ID</th>
+                <th>User ID</th>
+                <th>Book ID</th>
+                <th>Quantity</th>
+                <th>Price</th>
+                <th>Order Date</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="ordersList">
+              <?php foreach ($orders as $order): ?>
+                <tr>
+                  <td><?= htmlspecialchars($order['order_id']); ?></td>
+                  <td><?= htmlspecialchars($order['customer_name']); ?></td>
+                  <td><?= htmlspecialchars($order['book_title']); ?></td>
+                  <td><?= htmlspecialchars($order['quantity']); ?></td>
+                  <td>₱<?= number_format($order['price'], 2); ?></td>
+                  <td><?= htmlspecialchars($order['order_date']); ?></td>
+                  <td><?= htmlspecialchars($order['status']); ?></td>
+                  <td>
+                    <!-- View Button -->
+                    <a href="view-order.php?id=<?= $order['order_id']; ?>"
+                      class="btn btn-sm btn-primary"
+                      title="View Order">
+                      <i class="fas fa-eye"></i> View
+                    </a>
+
+                    <!-- Edit Button -->
+                    <a href="update-order.php?id=<?= $order['order_id']; ?>"
+                      class="btn btn-sm btn-warning"
+                      title="Edit Order">
+                      <i class="fas fa-edit"></i> Edit
+                    </a>
+
+                    <!-- Delete Button -->
+                    <a href="delete-order.php?id=<?= $order['order_id']; ?>"
+                      class="btn btn-sm btn-danger"
+                      onclick="return confirm('Are you sure you want to delete this order?');"
+                      title="Delete Order">
+                      <i class="fas fa-trash"></i> Delete
+                    </a>
+                  </td>
+                </tr>
+              <?php endforeach; ?>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+
+    </div>
 
 
 
@@ -799,51 +736,20 @@
 
   </html>
 
-<script>
-  function showViewBooks() {
-  // Get the View Books section
-  var viewBooksSection = document.getElementById('viewBooks');
-  
-  // Toggle visibility of the View Books section
-  if (viewBooksSection.style.display === 'none' || viewBooksSection.style.display === '') {
-    viewBooksSection.style.display = 'block';  // Show the content
-  } else {
-    viewBooksSection.style.display = 'none';  // Hide the content
-  }
-}
-
-</script>
-
   <script>
-    document.addEventListener("DOMContentLoaded", function() {
-      // Fetch books from the PHP script
-      fetch('fetch_books.php')
-        .then(response => response.json())
-        .then(books => {
-          const booksList = document.getElementById('booksList');
-          booksList.innerHTML = ''; // Clear any existing content
+    function showViewBooks() {
+      // Get the View Books section
+      var viewBooksSection = document.getElementById('viewBooks');
 
-          books.forEach(book => {
-            const row = document.createElement('tr');
-            row.innerHTML = `
-          <td>${book.book_id}</td>
-          <td>${book.title}</td>
-          <td>${book.author}</td>
-          <td>${book.price}</td>
-          <td>${book.stock}</td>
-          <td>${book.category || 'N/A'}</td>
-          <td>${book.description}</td>
-          <td><img src="${book.image}" alt="${book.title}" style="width:50px;height:auto;"></td>
-          <td>
-            <button class="edit-book" data-id="${book.book_id}">Edit</button>
-            <button class="delete-book" data-id="${book.book_id}">Delete</button>
-          </td>
-        `;
-            booksList.appendChild(row);
-          });
-        })
-        .catch(error => console.error('Error fetching books:', error));
-    });
+      // Toggle visibility of the View Books section
+      if (viewBooksSection.style.display === 'none' || viewBooksSection.style.display === '') {
+        viewBooksSection.style.display = 'block'; // Show the content
+      } else {
+        viewBooksSection.style.display = 'none'; // Hide the content
+      }
+
+      document.getElementById('viewBooksContent').style.display = 'none';
+    }
   </script>
 
 
@@ -856,7 +762,7 @@
       const content = document.getElementById(contentId);
       content.style.display = 'block'; // Show the selected content
 
-      if (contentId === 'viewBooks') {
+      if (contentId === 'viewBooksContent') {
         fetchBooks(); // Fetch books when the 'View Books' content is shown
       }
     }

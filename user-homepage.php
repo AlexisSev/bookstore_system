@@ -8,7 +8,18 @@ if (!isset($_SESSION['user_id'])) {
   exit();
 }
 
+$logged_in = isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true;
+
+// Determine which section to show based on query parameters
+$show_home = isset($_GET['show_home']) && $_GET['show_home'] === 'true';
+$show_books = isset($_GET['view_books']) && $_GET['view_books'] === 'true';
+
+// Set Home as the default if no query parameters are provided
+if (!$show_books && $logged_in) {
+  $show_home = true;
+}
 $user_id = $_SESSION['user_id'];  // Get the logged-in user's ID
+
 
 $books = $pdo->query("SELECT * FROM books")->fetchAll(PDO::FETCH_ASSOC);
 
@@ -48,8 +59,6 @@ if ($userCheckStmt->rowCount() > 0) {
     header("Location: " . $_SERVER['PHP_SELF'] . "?view_books=true");
     exit();
   }
-} else {
-  echo "<div class='alert alert-danger'>Error: User does not exist. Please log in again.</div>";
 }
 
 function getCartItems($pdo, $user_id)
@@ -177,7 +186,7 @@ if (isset($_POST['send_message'])) {
                 });
             });
           </script>";
-} else {
+  } else {
     echo "<script>
             document.addEventListener('DOMContentLoaded', () => {
                 Swal.fire({
@@ -189,7 +198,7 @@ if (isset($_POST['send_message'])) {
                 });
             });
           </script>";
-}
+  }
 }
 
 ?>
@@ -202,37 +211,45 @@ if (isset($_POST['send_message'])) {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Books and Cart</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:wght@400;700&family=Merriweather:wght@400;700&display=swap" rel="stylesheet">
 
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
-
     body {
-      background: #f9f9f9;
-      font-family: 'Poppins', sans-serif;
+      background-color: #FAD7A0;
+      /* Peach */
+      color: #4A4A4A;
+      /* Gray for text readability */
       margin: 0;
-      color: #333;
+      padding-top: 70px;
+      /* Adjust based on the height of your navbar */
     }
 
 
+    h5 {
+      text-decoration: none;
+    }
+
     .navbar-custom {
-      background: linear-gradient(to right, #007bff, #0056b3);
-      padding: 1rem 2rem;
+      background-color: #4A4A4A;
+      /* Charcoal Gray */
       box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     }
 
     .navbar-custom .navbar-brand {
       font-size: 1.5rem;
       font-weight: 700;
-      color: #fff;
+      color: #F5DEB3;
+      /* Wheat (Book-like contrast) */
       text-transform: uppercase;
     }
 
     .navbar-custom .nav-link {
-      font-size: 1rem;
+      font-size: 1.4rem;
       font-weight: 500;
+      margin-right: 10px;
       color: #fff;
-      margin: 0 0.5rem;
       transition: color 0.3s;
     }
 
@@ -242,7 +259,16 @@ if (isset($_POST['send_message'])) {
     }
 
     .nav-item {
+      display: flex;
+      align-items: center;
       margin-top: 1rem;
+    }
+
+    .searchQ {
+      display: flex;
+      height: 30px;
+      margin-top: 2.3rem;
+      margin-right: 2rem;
     }
 
     .container h5 {
@@ -250,17 +276,21 @@ if (isset($_POST['send_message'])) {
     }
 
     .hero-section {
-      background: linear-gradient(to right, #0056b3, #007bff), url('images/hero-bg.jpg') center/cover no-repeat;
+      background: url('images/books.jpg');
       color: white;
-      padding: 120px 20px;
+      height: 100vh;
       text-align: center;
       box-shadow: inset 0 0 50px rgba(0, 0, 0, 0.2);
+      background-repeat: no-repeat;
+      background-size: cover;
+      display: flex;
+      justify-content: center;
+      align-items: center;
     }
 
     .hero-section h1 {
       font-size: 3rem;
       font-weight: 700;
-      margin-bottom: 1rem;
     }
 
     .hero-section p {
@@ -299,10 +329,18 @@ if (isset($_POST['send_message'])) {
     }
 
     .card-title {
-      font-weight: 600;
-      color: #0056b3;
-      font-size: 1.2rem;
+      font-family: 'Merriweather', serif;
+      color: #4A4A4A;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      margin-bottom: 1rem;
+
     }
+
+    .card-title:hover {
+      cursor: default;
+    }
+
 
     .btn-primary {
       background: linear-gradient(to right, #007bff, #0056b3);
@@ -350,9 +388,7 @@ if (isset($_POST['send_message'])) {
     .cart-summary {
       padding: 20px;
       background: #ffffff;
-      border-radius: 15px;
       box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-      margin: 20px 100px;
       display: flex;
       flex-direction: column;
       height: 100%;
@@ -380,7 +416,7 @@ if (isset($_POST['send_message'])) {
 
     .cart-item {
       flex: 1 1 calc(30% - 20px);
-      max-width: calc(30% - 20px);
+      max-width: calc(20% - 20px);
       box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
       padding: 15px;
       border-radius: 10px;
@@ -414,7 +450,7 @@ if (isset($_POST['send_message'])) {
     }
 
     .btn-success:hover {
-      transform: scale(1.05);
+      transform: scale(1.01);
       box-shadow: 0 8px 15px rgba(0, 0, 0, 0.2);
     }
 
@@ -433,12 +469,10 @@ if (isset($_POST['send_message'])) {
       border-radius: 10px;
       box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
       padding: 20px;
-      transition: transform 0.3s, box-shadow 0.3s;
     }
 
-    .card-body:hover {
-      transform: translateY(-5px);
-      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+    .modal-content {
+      width: 300px;
     }
 
     @media (max-width: 768px) {
@@ -463,15 +497,15 @@ if (isset($_POST['send_message'])) {
 <body>
 
   <!-- Navbar -->
-  <nav class="navbar navbar-expand-lg navbar-custom navbar-dark">
+  <nav class="navbar navbar-expand-lg navbar-custom navbar-dark fixed-top">
     <div class="container-fluid">
-      <a class="navbar-brand" href="#">Bookstore</a>
+      <a class="navbar-brand" href="#">Bookify</a>
       <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
         <span class="navbar-toggler-icon"></span>
       </button>
       <div class="collapse navbar-collapse" id="navbarNav">
         <ul class="navbar-nav ms-auto">
-          <form class="d-flex me-2 h-50" method="GET" action="">
+          <form class="searchQ" method="GET" action="">
             <input class="form-control me-2" type="search" name="search_query" placeholder="Search books" aria-label="Search" value="<?= htmlspecialchars($_GET['search_query'] ?? '') ?>">
             <button class="btn btn-outline-light" type="submit">Search</button>
           </form>
@@ -483,24 +517,49 @@ if (isset($_POST['send_message'])) {
             <a class="nav-link" href="?view_books=true">Books</a>
           </li>
           <li class="nav-item">
-            <a class="nav-link" href="?view_cart=true">Cart <span class="cart-counter"><?= $cartCount ?></span></a>
-          </li>
+    <a class="nav-link" href="?view_cart=true">
+        <i class="fas fa-shopping-cart me-2"></i>Cart 
+        <span class="cart-counter"><?= $cartCount ?></span>
+    </a>
+</li>
 
           <!-- Profile Dropdown -->
           <li class="nav-item dropdown">
-            <a class="nav-link d-flex align-items-center" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+            <a class="nav-link" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
               <img src="<?= !empty($_SESSION['profile_image']) ? htmlspecialchars($_SESSION['profile_image']) : 'default-profile.png'; ?>"
-                alt="Profile" class="rounded-circle me-2" style="width: 35px; height: 35px; object-fit: cover;">
+                alt="Profile" class="rounded-circle ms-5" style="width: 50px; height: 50px; object-fit: cover;">
             </a>
             <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
-
-              <li><a class="dropdown-item" href="profile.php">Profile</a></li>
-             
+              <!-- Profile Link -->
               <li>
-                <button class="dropdown-item" data-bs-toggle="modal" data-bs-target="#contactModal">Contact Admin</button>
+                <a class="dropdown-item" href="profile.php">
+                  <i class="fas fa-user me-2"></i>Profile
+                </a>
               </li>
-              
-              <li><a class="dropdown-item" href="#" onclick="confirmLogout()">Logout</a></li>
+
+              <!-- Divider -->
+              <li>
+                <hr class="dropdown-divider">
+              </li>
+
+              <!-- Contact Admin Modal Trigger -->
+              <li>
+                <button class="dropdown-item" data-bs-toggle="modal" data-bs-target="#contactModal">
+                  <i class="fas fa-envelope me-2"></i>Contact Admin
+                </button>
+              </li>
+
+              <!-- Divider -->
+              <li>
+                <hr class="dropdown-divider">
+              </li>
+
+              <!-- Logout -->
+              <li>
+                <a class="dropdown-item" href="#" onclick="confirmLogout()">
+                  <i class="fas fa-sign-out-alt me-2"></i>Logout
+                </a>
+              </li>
             </ul>
           </li>
 
@@ -509,62 +568,39 @@ if (isset($_POST['send_message'])) {
     </div>
   </nav>
 
-  <!-- Hero Section (Initially Hidden) -->
+
+
+  <!-- Sections -->
   <?php if ($show_home): ?>
     <div class="hero-section">
       <div class="container text-center text-white">
-        <h1 class="hero-title">Welcome to Our Bookstore</h1>
+        <h1 class="hero-title">Welcome to Bookify</h1>
         <p class="hero-description">Your one-stop destination for books across various genres</p>
         <a href="?view_books=true" class="btn btn-light btn-lg hero-btn">Browse Books</a>
       </div>
     </div>
   <?php endif; ?>
 
- 
- <!-- Modal for Contacting Admin -->
-<div class="modal fade" id="contactModal" tabindex="-1" aria-labelledby="contactModalLabel" aria-hidden="true">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="contactModalLabel">Contact Admin</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        <form method="POST" action="">
-          <div class="mb-3">
-            <label for="subject" class="form-label">Subject</label>
-            <input type="text" class="form-control" id="subject" name="subject" required>
-          </div>
-          <div class="mb-3">
-            <label for="content" class="form-label">Message</label>
-            <textarea class="form-control" id="content" name="content" rows="4" required></textarea>
-          </div>
-          <button type="submit" class="btn btn-primary" name="send_message">Send Message</button>
-        </form>
-      </div>
-    </div>
-  </div>
-</div>
 
   <!-- Books Section -->
   <?php if ($show_books): ?>
     <div class="container mt-4">
       <div class="row">
         <?php foreach ($books as $book) { ?>
-          <div class="col-md-4 mb-4">
-            <div class="card shadow-sm border-light">
-              <img src="./images/books/<?= $book['image'] ?>" class="card-img-top" style="object-fit: fill;" alt="Book Image">
-              <div class="card-body text-center p-4">
-                <h5 class="card-title text-primary fw-bold mb-3"><?= htmlspecialchars($book['title']) ?></h5>
+          <div class="col-12 col-sm-6 col-md-4 col-lg-3 mb-4">
+            <div class="card shadow-sm border-light h-100">
+              <img src="./images/books/<?= $book['image'] ?>" class="card-img-top" style="height: 250px; object-fit: fill;" alt="Book Image">
+              <div class="card-body text-center p-4 d-flex flex-column">
+                <h5 class="card-title text-black mb-3"><?= htmlspecialchars($book['title']) ?></h5>
                 <p class="card-text text-secondary"><span class="fw-semibold"><?= htmlspecialchars($book['author']) ?></span></p>
                 <p class="card-text text-success fw-bold">₱<?= htmlspecialchars(number_format($book['price'], 2)) ?></p>
                 <p class="card-text <?= $book['stock'] > 0 ? 'text-success' : 'text-danger' ?>">
                   Stock: <?= htmlspecialchars($book['stock']) ?>
                 </p>
                 <?php if ($book['stock'] > 0): ?>
-                  <form method="post" class="mb-2">
+                  <form method="post" class="mt-auto">
                     <input type="hidden" name="book_id" value="<?= $book['book_id'] ?>">
-                    <button type="submit" name="add_to_cart" class="btn btn-primary w-100">Add to Cart</button>
+                    <button type="submit" name="add_to_cart" class="btn btn-primary w-100 mb-2">Add to Cart</button>
                   </form>
                 <?php else: ?>
                   <button type="button" class="btn btn-danger w-100 out-of-stock-btn" disabled>Out of Stock</button>
@@ -590,7 +626,7 @@ if (isset($_POST['send_message'])) {
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <div class="modal-body">
-            <img src="./images/books/<?= $book['image'] ?>" class="img-fluid mb-3" alt="Book Image">
+            <img src="./images/books/<?= $book['image'] ?>" class="img-fluid mb-3" style="height: 250px; width:250px" alt="Book Image">
             <p><strong>Author:</strong> <?= htmlspecialchars($book['author']) ?></p>
             <p><strong>Price:</strong> ₱<?= htmlspecialchars($book['price']) ?></p>
             <p><strong>Stock:</strong>
@@ -621,7 +657,7 @@ if (isset($_POST['send_message'])) {
 
 
   <?php if ($show_cart): ?>
-    <div class="cart-summary container p-4 rounded shadow-lg bg-white">
+    <div class="cart-summary">
       <h2 class="mb-4 text-center">Your Cart</h2>
       <p class="text-center fs-5 text-secondary">Total Items: <strong><?= $cartCount ?></strong></p>
 
@@ -656,47 +692,71 @@ if (isset($_POST['send_message'])) {
         <h4 class="text-end text-dark">Grand Total: <span class="text-success">$<?= htmlspecialchars(number_format($totalCost, 2)) ?></span></h4>
       </div>
 
-      <form method="POST" action="">
-        <button type="submit" name="checkout" class="btn btn-success w-100 mt-4 p-3 fs-5">Proceed to Checkout</button>
+      <form method="POST" action="" class="d-flex justify-content-center">
+        <button type="submit" name="checkout" class="btn btn-success w-50 mt-4 p-3 fs-5">Proceed to Checkout</button>
       </form>
     </div>
   <?php endif; ?>
 
+  <!-- Modal for Contacting Admin -->
+  <div class="modal fade" id="contactModal" tabindex="-1" aria-labelledby="contactModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="contactModalLabel">Contact Admin</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form method="POST" action="">
+            <div class="mb-3">
+              <label for="subject" class="form-label">Subject</label>
+              <input type="text" class="form-control" id="subject" name="subject" required>
+            </div>
+            <div class="mb-3">
+              <label for="content" class="form-label">Message</label>
+              <textarea class="form-control" id="content" name="content" rows="4" required></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary" name="send_message">Send Message</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <?php if ($searchQuery): ?>
-  <div class="container mt-4">
-    <h2 class="text-center">Search Results for "<?= htmlspecialchars($searchQuery) ?>"</h2>
-    <?php if (empty($books)): ?>
-      <p class="text-center text-muted">No books found.</p>
-    <?php else: ?>
-      <div class="row">
-        <?php foreach ($books as $book): ?>
-          <div class="col-md-4 mb-4">
-            <div class="card shadow-sm border-light">
-              <img src="./images/books/<?= $book['image'] ?>" class="card-img-top" style="object-fit: fill;" alt="Book Image">
-              <div class="card-body">
-                <h5 class="card-title"><?= htmlspecialchars($book['title']) ?></h5>
-                <p class="card-text">Author: <?= htmlspecialchars($book['author']) ?></p>
-                <p class="card-text">Price: ₱<?= htmlspecialchars($book['price']) ?></p>
-                <p class="card-text">Stock: <?= htmlspecialchars($book['stock']) ?></p>
-                <form method="post" class="mb-2">
-                  <input type="hidden" name="book_id" value="<?= $book['book_id'] ?>">
-                  <?php if ($book['stock'] > 0): ?>
-                    <button type="submit" name="add_to_cart" class="btn btn-primary w-100">Add to Cart</button>
-                  <?php else: ?>
-                    <button type="button" class="btn btn-primary w-100" disabled>Out of Stock</button>
-                  <?php endif; ?>
-                </form>
-                <button type="button" class="btn btn-outline-secondary w-100" data-bs-toggle="modal" data-bs-target="#bookModal<?= $book['book_id'] ?>">
-                  View Details
-                </button>
+    <div class="container mt-4">
+      <h2 class="text-center">Search Results for "<?= htmlspecialchars($searchQuery) ?>"</h2>
+      <?php if (empty($books)): ?>
+        <p class="text-center text-muted">No books found.</p>
+      <?php else: ?>
+        <div class="row">
+          <?php foreach ($books as $book): ?>
+            <div class="col-md-4 mb-4">
+              <div class="card shadow-sm border-light">
+                <img src="./images/books/<?= $book['image'] ?>" class="card-img-top" style="height: 250px; object-fit: fill;" alt="Book Image">
+                <div class="card-body">
+                  <h5 class="card-title"><?= htmlspecialchars($book['title']) ?></h5>
+                  <p class="card-text">Author: <?= htmlspecialchars($book['author']) ?></p>
+                  <p class="card-text">Price: ₱<?= htmlspecialchars($book['price']) ?></p>
+                  <form method="post" class="mb-2">
+                    <input type="hidden" name="book_id" value="<?= $book['book_id'] ?>">
+                    <?php if ($book['stock'] > 0): ?>
+                      <button type="submit" name="add_to_cart" class="btn btn-primary w-100">Add to Cart</button>
+                    <?php else: ?>
+                      <button type="button" class="btn btn-primary w-100" disabled>Out of Stock</button>
+                    <?php endif; ?>
+                  </form>
+                  <button type="button" class="btn btn-outline-secondary w-100" data-bs-toggle="modal" data-bs-target="#bookModal<?= $book['book_id'] ?>">
+                    View Details
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
-        <?php endforeach; ?>
-      </div>
-    <?php endif; ?>
-  </div>
-<?php endif; ?>
+          <?php endforeach; ?>
+        </div>
+      <?php endif; ?>
+    </div>
+  <?php endif; ?>
 
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
@@ -741,6 +801,7 @@ if (isset($_POST['send_message'])) {
         text: "Do you really want to log out?",
         icon: 'warning',
         showCancelButton: true,
+        confirmButtonColor: '#d33', // Confirm button color
         confirmButtonText: 'Yes, logout',
         cancelButtonText: 'Cancel',
         reverseButtons: true
