@@ -1,0 +1,140 @@
+/* Dashboard CSS - Pastel Blue Theme */
+body {
+    background-color: #e8f0fe;
+    font-family: 'DM Sans', sans-serif;
+    color: #333;
+}
+
+body::-webkit-scrollbar {
+    display: none;
+}
+
+.navbar {
+    background-color: #8ab6d6;
+    padding: 10px 0;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    border-radius: 0 0 8px 8px;
+}
+
+.navbar-brand {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #fff !important;
+}
+
+.navbar-brand:hover {
+    color: #d1e7ff !important;
+}
+
+.nav-link {
+    color: #fff !important;
+    font-size: 1.125rem;
+    margin-right: 15px;
+    transition: color 0.3s ease;
+}
+
+.nav-link:hover {
+    color: #d1e7ff !important;
+}
+
+.navbar-toggler {
+    border-color: #d1e7ff;
+}
+
+.navbar-toggler-icon {
+    background-color: #fff;
+}
+
+.card {
+    border: none;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.card-title {
+    font-size: 1.5rem;
+    font-weight: bold;
+}
+
+.card-text {
+    font-size: 1.25rem;
+}
+
+.table {
+    background-color: #ffffff;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.table-striped > tbody > tr:nth-of-type(odd) {
+    background-color: #f0f8ff;
+}
+
+.table-striped > tbody > tr:nth-of-type(even) {
+    background-color: #ffffff;
+}
+
+.btn-primary {
+    background-color: #8ab6d6;
+    border-color: #8ab6d6;
+    font-size: 1.125rem;
+    padding: 12px 20px;
+    border-radius: 8px;
+}
+
+.btn-primary:hover {
+    background-color: #709cc8;
+    border-color: #709cc8;
+}
+
+.btn-warning {
+    background-color: #f4c542;
+    border-color: #f4c542;
+    font-size: 1.125rem;
+    padding: 12px 20px;
+    border-radius: 8px;
+}
+
+.btn-warning:hover {
+    background-color: #d9a835;
+    border-color: #d9a835;
+}
+
+.btn-danger {
+    background-color: #e57373;
+    border-color: #e57373;
+    font-size: 1.125rem;
+    padding: 12px 20px;
+    border-radius: 8px;
+}
+
+.btn-danger:hover {
+    background-color: #d65a5a;
+    border-color: #d65a5a;
+}
+
+h2 {
+    color: #4a90e2;
+    font-weight: bold;
+    margin-top: 20px;
+    margin-bottom: 20px;
+}
+
+form .form-label {
+    color: #333;
+    font-weight: bold;
+}
+
+form .form-select, form .form-control {
+    border-radius: 6px;
+    border: 1px solid #ced4da;
+    font-size: 1rem;
+}
+
+form .btn {
+    font-weight: bold;
+    font-size: 1.125rem;
+    padding: 12px 20px;
+    border-radius: 8px;
+}
