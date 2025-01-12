@@ -4,11 +4,11 @@ session_start();  // Start the session to access user data
 
 // Ensure the user is logged in
 if (!isset($_SESSION['user_id'])) {
-  header('Location: sign-up.php');  // Redirect to login page if not logged in
+  header('Location: sign-up.php'); 
   exit();
 }
 
-$user_id = $_SESSION['user_id'];  // Get the logged-in user's ID
+$user_id = $_SESSION['user_id']; 
 
 $books = $pdo->query("SELECT * FROM books")->fetchAll(PDO::FETCH_ASSOC);
 

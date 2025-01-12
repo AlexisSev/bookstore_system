@@ -42,7 +42,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['login'])) {
             $_SESSION['user_id'] = $adminResult['admin_id'];
             $_SESSION['username'] = $adminResult['name'];
             $_SESSION['role'] = 'admin';
-            header("Location: admin-dashboard.php"); // Redirect to admin dashboard
+            header("Location: admin_dashboard.php"); // Redirect to admin dashboard
             exit();
         } else {
             $error_message = "Invalid password!";

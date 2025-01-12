@@ -8,6 +8,41 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
     exit();
 }
 
+$user_id = $_SESSION['user_id'];
+
+// Handle Add Category functionality
+if (isset($_POST['add_category'])) {
+    $name = $_POST['category_name'];
+    $description = $_POST['category_description'];
+
+    $stmt = $pdo->prepare("INSERT INTO categories (name, description) VALUES (:name, :description)");
+    $stmt->execute(['name' => $name, 'description' => $description]);
+
+    $_SESSION['message'] = 'Category added successfully!';
+    header('Location: admin_dashboard.php#categories');
+    exit();
+}
+
+// Handle Delete Category functionality
+if (isset($_GET['delete_category'])) {
+    $category_id = $_GET['delete_category'];
+
+    // Check if there are books in this category
+    $bookCheckStmt = $pdo->prepare("SELECT COUNT(*) AS count FROM books WHERE category_id = :category_id");
+    $bookCheckStmt->execute(['category_id' => $category_id]);
+    $bookCount = $bookCheckStmt->fetch(PDO::FETCH_ASSOC)['count'];
+
+    if ($bookCount > 0) {
+        $_SESSION['message'] = 'Cannot delete category as it contains books.';
+    } else {
+        $stmt = $pdo->prepare("DELETE FROM categories WHERE category_id = :category_id");
+        $stmt->execute(['category_id' => $category_id]);
+        $_SESSION['message'] = 'Category deleted successfully!';
+    }
+    header('Location: admin_dashboard.php#categories');
+    exit();
+}
+
 // Handling Add Book functionality
 if (isset($_POST['add_book'])) {
     $title = $_POST['title'];
@@ -41,92 +76,7 @@ if (isset($_POST['add_book'])) {
     ]);
 
     $_SESSION['message'] = 'Book added successfully!';
-    header('Location: admin-dashboard.php');
-    exit();
-}
-
-// Handle Add Category functionality
-if (isset($_POST['add_category'])) {
-    $name = $_POST['name'];
-    $description = $_POST['description'];
-
-    $stmt = $pdo->prepare("INSERT INTO categories (name, description) VALUES (:name, :description)");
-    $stmt->execute(['name' => $name, 'description' => $description]);
-
-    $_SESSION['message'] = 'Category added successfully!';
-    header('Location: admin-dashboard.php');
-    exit();
-}
-
-// Handle Delete Category functionality
-if (isset($_GET['delete_category'])) {
-    $category_id = $_GET['delete_category'];
-
-    // Check if there are books in this category
-    $bookCheckStmt = $pdo->prepare("SELECT COUNT(*) AS count FROM books WHERE category_id = :category_id");
-    $bookCheckStmt->execute(['category_id' => $category_id]);
-    $bookCount = $bookCheckStmt->fetch(PDO::FETCH_ASSOC)['count'];
-
-    if ($bookCount > 0) {
-        $_SESSION['message'] = 'Cannot delete category as it contains books.';
-    } else {
-        $stmt = $pdo->prepare("DELETE FROM categories WHERE category_id = :category_id");
-        $stmt->execute(['category_id' => $category_id]);
-        $_SESSION['message'] = 'Category deleted successfully!';
-    }
-    header('Location: admin-dashboard.php');
-    exit();
-}
-
-// Handle Update Book functionality
-if (isset($_POST['update_book'])) {
-    $book_id = $_POST['book_id'];
-    $title = $_POST['title'];
-    $author = $_POST['author'];
-    $price = $_POST['price'];
-    $stock = $_POST['stock'];
-    $category_id = $_POST['category_id'];
-    $description = $_POST['description'];
-
-    // Handling Image Upload
-    if (isset($_FILES['image']) && $_FILES['image']['error'] == 0) {
-        $imageName = $_FILES['image']['name'];
-        $imageTmpName = $_FILES['image']['tmp_name'];
-        $imageDestination = './images/books/' . $imageName;
-        move_uploaded_file($imageTmpName, $imageDestination);
-
-        // Update book details including the image
-        $stmt = $pdo->prepare("UPDATE books SET title = :title, author = :author, price = :price, 
-                               stock = :stock, category_id = :category_id, description = :description, 
-                               image = :image WHERE book_id = :book_id");
-        $stmt->execute([
-            'title' => $title,
-            'author' => $author,
-            'price' => $price,
-            'stock' => $stock,
-            'category_id' => $category_id,
-            'description' => $description,
-            'image' => $imageName,
-            'book_id' => $book_id
-        ]);
-    } else {
-        // Update book details without changing the image
-        $stmt = $pdo->prepare("UPDATE books SET title = :title, author = :author, price = :price, 
-                               stock = :stock, category_id = :category_id, description = :description 
-                               WHERE book_id = :book_id");
-        $stmt->execute([
-            'title' => $title,
-            'author' => $author,
-            'price' => $price,
-            'stock' => $stock,
-            'category_id' => $category_id,
-            'description' => $description,
-            'book_id' => $book_id
-        ]);
-    }
-
-    $_SESSION['message'] = 'Book updated successfully!';
-    header('Location: admin-dashboard.php');
+    header('Location: admin_dashboard.php');
     exit();
 }
 
@@ -152,7 +102,7 @@ if (isset($_GET['delete_book'])) {
         $_SESSION['message'] = 'Book deleted successfully!';
     }
 
-    header('Location: admin-dashboard.php');
+    header('Location: admin_dashboard.php');
     exit();
 }
 
@@ -170,6 +120,7 @@ $books = $pdo->query("SELECT * FROM books")->fetchAll(PDO::FETCH_ASSOC);
     <title>Bookstore Admin Dashboard</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="dashboard.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 
 <body>
@@ -191,6 +142,7 @@ $books = $pdo->query("SELECT * FROM books")->fetchAll(PDO::FETCH_ASSOC);
             </div>
         </div>
     </nav>
+
 
     <!-- Main Container -->
     <div class="container-fluid">
@@ -235,9 +187,21 @@ $books = $pdo->query("SELECT * FROM books")->fetchAll(PDO::FETCH_ASSOC);
 
         <!-- Categories Section -->
         <div id="categories" class="mb-5">
-            <h2>Categories</h2>
-            <button class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#addCategoryModal">Add Category</button>
-            <table class="table table-striped">
+            <h2 class="mb-4">Categories</h2>
+
+            <form method="POST" action="" class="p-4 border rounded shadow-sm bg-light">
+                <div class="mb-3">
+                    <label for="category_name" class="form-label">Category Name</label>
+                    <input type="text" id="category_name" name="category_name" class="form-control" placeholder="Enter category name" required>
+                </div>
+                <div class="mb-3">
+                    <label for="category_description" class="form-label">Category Description</label>
+                    <textarea id="category_description" name="category_description" class="form-control" placeholder="Enter category description" rows="3" required></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary w-100" name="add_category">Add Category</button>
+            </form>
+
+            <table class="table table-striped mt-4">
                 <thead>
                     <tr>
                         <th>ID</th>
@@ -259,10 +223,67 @@ $books = $pdo->query("SELECT * FROM books")->fetchAll(PDO::FETCH_ASSOC);
             </table>
         </div>
 
-        <!-- Books Section -->
+
+        <div id="add-book" class="mb-5">
+            <h2>Add New Book</h2>
+            <form method="POST" enctype="multipart/form-data">
+                <!-- First Row: Title and Author -->
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label for="title" class="form-label">Book Title</label>
+                        <input type="text" class="form-control" id="title" name="title" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="author" class="form-label">Author</label>
+                        <input type="text" class="form-control" id="author" name="author" required>
+                    </div>
+                </div>
+
+                <!-- Second Row: Price and Stock -->
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label for="price" class="form-label">Price</label>
+                        <input type="number" step="0.01" class="form-control" id="price" name="price" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="stock" class="form-label">Stock</label>
+                        <input type="number" class="form-control" id="stock" name="stock" required>
+                    </div>
+                </div>
+
+                <!-- Third Row: Category and Image -->
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label for="category_id" class="form-label">Category</label>
+                        <select class="form-select" id="category_id" name="category_id" required>
+                            <?php foreach ($categories as $category): ?>
+                                <option value="<?= htmlspecialchars($category['category_id']) ?>"><?= htmlspecialchars($category['name']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="image" class="form-label">Book Image</label>
+                        <input type="file" class="form-control" id="image" name="image" accept="image/*">
+                    </div>
+                </div>
+
+                <!-- Fourth Row: Description -->
+                <div class="row mb-3">
+                    <div class="col">
+                        <label for="description" class="form-label">Description</label>
+                        <textarea class="form-control" id="description" name="description" rows="2" required></textarea>
+                    </div>
+                </div>
+
+                <!-- Submit Button -->
+                <div class="text-center">
+                    <button type="submit" class="btn btn-success" name="add_book">Add Book</button>
+                </div>
+            </form>
+        </div>
+
         <div id="books" class="mb-5">
             <h2>Books</h2>
-            <button class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#addBookModal">Add Book</button>
             <div class="row row-cols-1 row-cols-md-3 g-4">
                 <?php foreach ($books as $book): ?>
                     <div class="col">
@@ -274,7 +295,8 @@ $books = $pdo->query("SELECT * FROM books")->fetchAll(PDO::FETCH_ASSOC);
                                 <p class="card-text">Price: ₱<?= htmlspecialchars($book['price']) ?></p>
                                 <p class="card-text">Stock: <?= htmlspecialchars($book['stock']) ?></p>
                                 <div class="text-center">
-                                    <a href="?edit_book=<?= $book['book_id'] ?>" class="btn btn-primary">Edit Book</a>
+                                    <a href="edit_book.php?edit_book=<?= $book['book_id'] ?>" class="btn btn-primary">Edit Book</a>
+
                                     <a href="?delete_book=<?= $book['book_id'] ?>" class="btn btn-danger">Delete</a>
                                 </div>
                             </div>
@@ -283,7 +305,6 @@ $books = $pdo->query("SELECT * FROM books")->fetchAll(PDO::FETCH_ASSOC);
                 <?php endforeach; ?>
             </div>
         </div>
-
 
         <!-- Sales Section -->
         <div id="sales" class="mb-5">
@@ -300,6 +321,7 @@ $books = $pdo->query("SELECT * FROM books")->fetchAll(PDO::FETCH_ASSOC);
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 
 </html>
